@@ -215,7 +215,7 @@ export default function Home() {
           </div>
         </section>
 
-        <p className="footer-note" id="settings">Os vídeos enviados são armazenados no servidor e associados à sua conta. A identificação de momentos relevantes por IA, geração de cortes, renderização e créditos ainda estão em desenvolvimento.</p>
+        <p className="footer-note" id="settings">Os vídeos enviados são armazenados no servidor e associados à sua conta. As sugestões iniciais de cortes são baseadas na transcrição. Análise visual de reações, edição e renderização dos clipes ainda estão em desenvolvimento.</p>
       </main>
     </div>
   );
