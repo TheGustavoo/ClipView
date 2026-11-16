@@ -14,7 +14,8 @@ type Project = {
   created_at: string;
   processing_job_id?: number | null;
 };
-type Job = { status: string; transcript: string | null; language: string | null; error_message: string | null };
+type ClipSuggestion = { start: number; end: number; duration: number; score: number; text: string; reasons: string[] };
+type Job = { status: string; transcript: string | null; language: string | null; error_message: string | null; clip_suggestions: ClipSuggestion[] | null };
 
 function statusLabel(status: string) {
   const labels: Record<string, string> = {
@@ -24,7 +25,7 @@ function statusLabel(status: string) {
   return labels[status] ?? status;
 }
 
-function formatBytes(bytes: number) {
+function formatTime(seconds: number) {\n  const minutes = Math.floor(seconds / 60);\n  const remaining = Math.floor(seconds % 60);\n  return `${minutes}:${String(remaining).padStart(2, "0")}`;\n}\n\nfunction formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
@@ -198,6 +199,7 @@ export default function Home() {
                     <div className="project-title">{project.title}</div>
                     <div className="project-meta">{project.original_filename} · {formatBytes(project.size_bytes)}</div>
                     {jobs[project.id]?.transcript && <div className="transcript-preview">Transcrição ({jobs[project.id].language ?? "idioma detectado"}): {jobs[project.id].transcript}</div>}
+                    {jobs[project.id]?.clip_suggestions?.length ? <div className="clip-suggestions"><strong>Sugestões de cortes</strong>{jobs[project.id].clip_suggestions.map((clip, index) => <div className="clip-suggestion" key={`${clip.start}-${index}`}><div className="clip-suggestion-top"><b>Corte {index + 1}</b><span>{formatTime(clip.start)}–{formatTime(clip.end)} · {Math.round(clip.score * 100)} pts</span></div><p>{clip.text}</p><small>{clip.reasons.join(" · ")}</small></div>)}</div> : null}
                     {jobs[project.id]?.error_message && <div className="project-meta">{jobs[project.id].error_message}</div>}
                   </div>
                 </div>
