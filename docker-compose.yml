@@ -1,0 +1,67 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: clipview
+      POSTGRES_USER: clipview
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clipview -d clipview"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-local-only-change-me-before-deploy}
+      DATABASE_URL: postgresql+psycopg://clipview:${POSTGRES_PASSWORD:-change-this-local-password}@db:5432/clipview
+      REDIS_URL: redis://redis:6379/0
+      UPLOAD_DIR: /app/var/uploads
+      MAX_UPLOAD_BYTES: 524288000
+    ports:
+      - "8000:8000"
+    volumes:
+      - video_uploads:/app/var/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ./apps/api
+    command: ["celery", "-A", "app.core.celery_app.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    environment:
+      SECRET_KEY: ${SECRET_KEY:-local-only-change-me-before-deploy}
+      DATABASE_URL: postgresql+psycopg://clipview:${POSTGRES_PASSWORD:-change-this-local-password}@db:5432/clipview
+      REDIS_URL: redis://redis:6379/0
+      UPLOAD_DIR: /app/var/uploads
+      MAX_UPLOAD_BYTES: 524288000
+    volumes:
+      - video_uploads:/app/var/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  video_uploads:
