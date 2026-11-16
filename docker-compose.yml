@@ -33,6 +33,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       UPLOAD_DIR: /app/var/uploads
       MAX_UPLOAD_BYTES: 524288000
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_DEVICE: cpu
+      WHISPER_COMPUTE_TYPE: int8
     ports:
       - "8000:8000"
     volumes:
