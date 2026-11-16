@@ -2,7 +2,7 @@
 
 Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA.
 
-> **Status:** fundação em desenvolvimento. O painel inicial e uma API com cadastro, login, sessão JWT e consulta de perfil foram adicionados. Upload persistente, processamento com IA, renderização, cobrança e publicação ainda não estão implementados em produção.
+> **Status:** fundação em desenvolvimento. O painel inicial já possui páginas de cadastro e login integradas à API por rotas proxy do Next.js, com sessão em cookie HttpOnly. Upload persistente, processamento com IA, renderização, cobrança e publicação ainda não estão implementados em produção.
 
 ## Visão do produto
 
@@ -24,21 +24,11 @@ Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA
 - **Mídia:** FFmpeg e armazenamento compatível com S3 (planejado)
 - **Execução:** Docker Compose (planejado)
 
-## Rodar a interface web
+## Rodar localmente
 
-Requisitos: Node.js 20 ou superior e npm.
+Requisitos: Node.js 20 ou superior, npm e Python 3.12 ou superior.
 
-```bash
-cd apps/web
-npm install
-npm run dev
-```
-
-Abra `http://localhost:3000`. O painel atual é uma interface inicial: o seletor de arquivo apenas mostra o nome localmente e ainda não envia o vídeo para um servidor.
-
-## Rodar a API
-
-Requisitos: Python 3.12 ou superior.
+### 1. Inicie a API
 
 ```bash
 cd apps/api
@@ -48,28 +38,35 @@ pip install -r requirements-dev.txt
 uvicorn app.main:app --reload
 ```
 
-A API cria as tabelas iniciais automaticamente no startup para facilitar o desenvolvimento local. Para produção, substitua essa criação automática por migrações versionadas (Alembic), configure um `SECRET_KEY` forte e use PostgreSQL.
+A API ficará em `http://localhost:8000`. Ela cria as tabelas iniciais automaticamente no startup para facilitar o desenvolvimento local.
 
-### Endpoints iniciais
+### 2. Inicie o frontend em outro terminal
+
+```bash
+cd apps/web
+cp .env.example .env.local  # Windows: copie o arquivo manualmente
+npm install
+npm run dev
+```
+
+Abra `http://localhost:3000`. O `API_URL` do `.env.local` deve apontar para a API (`http://localhost:8000` por padrão). O frontend disponibiliza `/register` e `/login`; as rotas proxy guardam o token em cookie `HttpOnly`, `SameSite=Lax` e `Secure` em produção.
+
+O painel exige uma sessão válida. O seletor de arquivo ainda apenas mostra o nome localmente e não envia o vídeo para um servidor.
+
+## Endpoints iniciais da API
 
 - `GET /health` — estado da API.
 - `POST /auth/register` — cadastro; recebe `name`, `email` e `password` (mínimo 10 caracteres).
 - `POST /auth/login` — login; recebe `email` e `password`.
 - `GET /auth/me` — perfil autenticado; exige `Authorization: Bearer <access_token>`.
 
-Exemplo de cadastro:
-
-```bash
-curl -X POST http://localhost:8000/auth/register \\
-  -H 'Content-Type: application/json' \\
-  -d '{"name":"Seu Nome","email":"voce@example.com","password":"uma-senha-forte-123"}'
-```
-
 Para executar os testes automatizados, na pasta `apps/api`, rode `pytest`.
 
 ## Segurança e direitos de conteúdo
 
-As senhas são armazenadas com hash Argon2 e nunca retornadas pela API. Tokens de acesso são JWT e devem ser protegidos pelo cliente. O segredo padrão existe apenas para desenvolvimento local; defina `SECRET_KEY` forte e privado em qualquer ambiente compartilhado.
+As senhas são armazenadas com hash Argon2 e nunca retornadas pela API. Tokens de acesso são JWT. O frontend mantém o token em cookie `HttpOnly`, inacessível ao JavaScript do navegador. O segredo padrão existe apenas para desenvolvimento local; defina `SECRET_KEY` forte e privado em qualquer ambiente compartilhado.
+
+Para produção, substitua a criação automática de tabelas por migrações versionadas (Alembic), use PostgreSQL, configure HTTPS, limites de tentativas de login, monitoramento e política de recuperação de conta. Configure origens CORS específicas e revise a proteção CSRF das rotas autenticadas antes de expor o serviço.
 
 A plataforma deverá processar apenas arquivos enviados pelo usuário ou fontes para as quais ele tenha autorização. Integrações com plataformas externas devem respeitar seus termos, APIs e controles de acesso. URLs fornecidas pelo usuário exigem validação contra SSRF, incluindo DNS, IPs privados, redirecionamentos e destinos finais.
 
