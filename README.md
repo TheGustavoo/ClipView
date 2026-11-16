@@ -24,7 +24,7 @@ Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA
 - **Fila:** Redis + Celery (primeira integração implementada)
 - **Worker de mídia:** FFmpeg/FFprobe e faster-whisper em serviço Docker separado
 - **Mídia:** FFmpeg e armazenamento compatível com S3 (planejado)
-- **Execução:** Docker Compose (planejado)
+- **Execução:** Docker Compose com migração de banco antes de iniciar API e worker
 
 ## Subir API e worker com Docker Compose
 
@@ -48,10 +48,11 @@ python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 cp .env.example .env       # Windows: copie o arquivo manualmente
 pip install -r requirements-dev.txt
+alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-A API ficará em `http://localhost:8000`. Ela cria as tabelas iniciais automaticamente no startup para facilitar o desenvolvimento local. Os arquivos são gravados em `apps/api/var/uploads` por padrão; esse diretório não deve ser exposto publicamente.
+A API ficará em `http://localhost:8000`. As tabelas iniciais são criadas no startup para facilitar o desenvolvimento; `alembic upgrade head` aplica alterações de esquema em bancos já existentes. Os arquivos são gravados em `apps/api/var/uploads` por padrão; esse diretório não deve ser exposto publicamente.
 
 ### 2. Inicie o frontend em outro terminal
 
