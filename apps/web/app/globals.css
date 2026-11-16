@@ -156,3 +156,12 @@ h1 { font-size: clamp(26px,3vw,35px); letter-spacing: -1.2px; margin: 9px 0 8px;
 .video-preview { display: grid; gap: 6px; margin-top: 12px; max-width: 760px; }
 .video-preview video { display: block; width: 100%; max-height: 420px; border: 1px solid #343640; border-radius: 10px; background: #08090c; }
 .video-preview span { color: #858997; font-size: 10px; }
+
+
+.import-tabs { display: inline-flex; gap: 5px; padding: 4px; margin: 2px 0 18px; border: 1px solid #383443; border-radius: 11px; background: #14131a; }
+.import-tab { border: 0; border-radius: 8px; padding: 9px 15px; background: transparent; color: #aaa5b8; font-size: 11px; font-weight: 650; }
+.import-tab.active { color: #eee9ff; background: #37304b; }
+.url-import { display: flex; justify-content: center; gap: 9px; flex-wrap: wrap; }
+.url-import input { width: min(100%, 470px); min-width: 220px; padding: 12px 13px; color: #f4f3f8; background: #111217; border: 1px solid #454052; border-radius: 10px; outline: none; font-size: 12px; }
+.url-import input:focus { border-color: #9b87f5; box-shadow: 0 0 0 3px rgba(155,135,245,.12); }
+.import-hint { color: #858997; font-size: 10px; line-height: 1.5; margin: 12px auto 0; max-width: 620px; }
