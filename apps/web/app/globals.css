@@ -138,3 +138,10 @@ h1 { font-size: clamp(26px,3vw,35px); letter-spacing: -1.2px; margin: 9px 0 8px;
 }
 
 .transcript-preview { color: #b8b1d0; font-size: 11px; line-height: 1.6; margin-top: 8px; max-width: 720px; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.clip-suggestions { margin-top: 12px; display: grid; gap: 8px; max-width: 760px; }
+.clip-suggestions > strong { color: #e7e1f5; font-size: 12px; }
+.clip-suggestion { padding: 10px 12px; border: 1px solid rgba(174, 153, 218, .18); border-radius: 10px; background: rgba(126, 94, 180, .07); }
+.clip-suggestion-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #dcd2f2; font-size: 11px; }
+.clip-suggestion p { margin: 7px 0; color: #eee9f8; font-size: 12px; line-height: 1.5; }
+.clip-suggestion small { color: #a99cbd; font-size: 10px; line-height: 1.5; }
