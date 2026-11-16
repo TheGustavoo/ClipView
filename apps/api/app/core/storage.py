@@ -22,3 +22,11 @@ def new_upload_path(filename: str) -> Path:
     if suffix not in ALLOWED_EXTENSIONS:
         raise ValueError("Formato não permitido.")
     return upload_root() / f"{uuid4().hex}{suffix}"
+
+def has_video_signature(filename: str, header: bytes) -> bool:
+    suffix = Path(filename).suffix.lower()
+    if suffix in {".mp4", ".mov"}:
+        return len(header) >= 12 and header[4:8] == b"ftyp"
+    if suffix in {".webm", ".mkv"}:
+        return header.startswith(bytes.fromhex("1A45DFA3"))
+    return False
