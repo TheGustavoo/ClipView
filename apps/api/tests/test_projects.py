@@ -41,10 +41,11 @@ def test_upload_and_list_projects(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
     token = create_user_token()
     headers = {"Authorization": f"Bearer {token}"}
+    mp4_header = b"\x00\x00\x00\x18ftypisom" + b"sample-video-data"
     upload = client.post(
         "/projects/upload",
         headers=headers,
-        files={"file": ("amostra.mp4", b"fake-video-content", "video/mp4")},
+        files={"file": ("amostra.mp4", mp4_header, "video/mp4")},
     )
     assert upload.status_code == 201
     project = upload.json()
@@ -68,5 +69,14 @@ def test_upload_rejects_unsupported_extension() -> None:
         "/projects/upload",
         headers={"Authorization": f"Bearer {token}"},
         files={"file": ("script.exe", b"not-video", "application/octet-stream")},
+    )
+    assert response.status_code == 415
+
+def test_upload_rejects_invalid_container_signature() -> None:
+    token = create_user_token()
+    response = client.post(
+        "/projects/upload",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("renamed.mp4", b"this is not a video", "video/mp4")},
     )
     assert response.status_code == 415
