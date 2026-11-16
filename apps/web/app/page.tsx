@@ -1,14 +1,42 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type User = { id: number; name: string; email: string };
 
 export default function Home() {
+  const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<string>("");
+  const [selectedFile, setSelectedFile] = useState("");
+  const [user, setUser] = useState<User | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then(async response => {
+        if (!response.ok) throw new Error("Sessão ausente");
+        return response.json();
+      })
+      .then(data => { if (active) setUser(data); })
+      .catch(() => { if (active) router.replace("/login"); })
+      .finally(() => { if (active) setChecking(false); });
+    return () => { active = false; };
+  }, [router]);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
 
   function handleFile(file?: File) {
-    if (!file) return;
-    setSelectedFile(file.name);
+    if (file) setSelectedFile(file.name);
+  }
+
+  if (checking || !user) {
+    return <main className="auth-page"><div className="auth-loading">Carregando seu estúdio...</div></main>;
   }
 
   return (
@@ -41,10 +69,14 @@ export default function Home() {
         <header className="topbar">
           <div>
             <div className="eyebrow">Seu espaço de criação</div>
-            <h1>Visão geral</h1>
+            <h1>Olá, {user.name.split(" ")[0]}</h1>
             <p className="subheading">Organize seus vídeos e prepare seus próximos clipes.</p>
           </div>
-          <div className="avatar" aria-label="Perfil">CV</div>
+          <div className="profile-actions">
+            <span className="profile-email">{user.email}</span>
+            <div className="avatar" aria-label="Perfil">{user.name.slice(0, 1).toUpperCase()}</div>
+            <button className="logout-button" onClick={logout}>Sair</button>
+          </div>
         </header>
 
         <section className="stats" id="usage" aria-label="Resumo da conta">
@@ -58,14 +90,9 @@ export default function Home() {
           <div className="upload">
             <div className="upload-icon">↑</div>
             <h3>Escolha um vídeo para começar</h3>
-            <p>Selecione um arquivo do seu dispositivo. O envio real será habilitado na próxima etapa.</p>
-            <input
-              ref={fileRef}
-              className="file-input"
-              type="file"
-              accept="video/*"
-              onChange={(event) => handleFile(event.target.files?.[0])}
-            />
+            <p>Selecione um arquivo do seu dispositivo. O upload real será habilitado na próxima etapa.</p>
+            <input ref={fileRef} className="file-input" type="file" accept="video/*"
+              onChange={event => handleFile(event.target.files?.[0])} />
             <button className="primary" onClick={() => fileRef.current?.click()}>Selecionar vídeo</button>
             {selectedFile && <div className="file-name" role="status">Arquivo selecionado: {selectedFile}</div>}
           </div>
@@ -81,7 +108,7 @@ export default function Home() {
           </div>
         </section>
 
-        <p className="footer-note" id="settings">Versão inicial de interface. Login, armazenamento, processamento de vídeo, IA e créditos ainda não estão conectados. Não envie conteúdo confidencial nesta versão de demonstração.</p>
+        <p className="footer-note" id="settings">Sua sessão é protegida por cookie HttpOnly. O seletor de vídeo ainda não envia arquivos: armazenamento, processamento de vídeo, IA e créditos estão em desenvolvimento.</p>
       </main>
     </div>
   );
