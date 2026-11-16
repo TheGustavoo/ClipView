@@ -2,7 +2,7 @@
 
 Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA.
 
-> **Status:** fundação em desenvolvimento. O painel possui cadastro/login integrados e upload de arquivos de vídeo para armazenamento local no servidor, com projetos associados ao usuário. A fila assíncrona, inspeção técnica com FFprobe e transcrição inicial de áudio com Whisper foram adicionadas ao código. A primeira seleção automática de cortes baseada em sinais da transcrição está implementada. Análise visual de reações, detecção de cenas, editor, renderização final, cobrança e publicação ainda não estão implementados.
+> **Status:** fundação em desenvolvimento. O painel possui cadastro/login integrados e upload de arquivos de vídeo para armazenamento local no servidor, com projetos associados ao usuário. A fila assíncrona, inspeção técnica com FFprobe e transcrição inicial de áudio com Whisper foram adicionadas ao código. A primeira seleção automática de cortes baseada em sinais da transcrição está implementada. O painel já possui player autenticado do vídeo original e prévia dos intervalos selecionados. Análise visual de reações, detecção de cenas, renderização final, cobrança e publicação ainda não estão implementados.
 
 ## Visão do produto
 
