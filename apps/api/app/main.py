@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import models  # noqa: F401 - registers ORM models with SQLAlchemy metadata
 from app.db import Base, engine
 from app.routers.auth import router as auth_router
+from app.routers.projects import router as projects_router
 
 
 @asynccontextmanager
@@ -17,7 +18,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="ClipView API",
-    version="0.2.0",
+    version="0.3.0",
     description="API foundation for the ClipView video clipping platform.",
     lifespan=lifespan,
 )
@@ -32,8 +33,9 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(projects_router)
 
 
 @app.get("/health", tags=["system"])
 async def health() -> dict[str, str]:
-    return {"status": "ok", "service": "clipview-api", "version": "0.2.0"}
+    return {"status": "ok", "service": "clipview-api", "version": "0.3.0"}
