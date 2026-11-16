@@ -25,6 +25,17 @@ export async function POST(request: NextRequest) {
   if (!token) return NextResponse.json({ detail: "Não autenticado." }, { status: 401 });
 
   try {
+    if (request.headers.get("content-type")?.includes("application/json")) {
+      const payload = await request.json();
+      const upstream = await fetch(`${API_URL}/projects/import-url`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        cache: "no-store"
+      });
+      const data = await upstream.json();
+      return NextResponse.json(data, { status: upstream.status });
+    }
     const incoming = await request.formData();
     const file = incoming.get("file");
     if (!(file instanceof File)) {
