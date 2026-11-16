@@ -16,7 +16,15 @@ type Project = {
 };
 type Job = { status: string; transcript: string | null; language: string | null; error_message: string | null };
 
-function statusLabel(status: string) {\n  const labels: Record<string, string> = {\n    uploaded: "Enviado", queued: "Na fila", processing: "Analisando vídeo", ready: "Pronto", completed: "Transcrição concluída", transcribing: "Transcrevendo áudio", extracting_audio: "Extraindo áudio",\n    queue_unavailable: "Fila indisponível", processing_failed: "Falha no processamento",\n  };\n  return labels[status] ?? status;\n}\n\nfunction formatBytes(bytes: number) {
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    uploaded: "Enviado", queued: "Na fila", processing: "Analisando vídeo", ready: "Pronto", completed: "Transcrição concluída", transcribing: "Transcrevendo áudio", extracting_audio: "Extraindo áudio",
+    queue_unavailable: "Fila indisponível", processing_failed: "Falha no processamento",
+  };
+  return labels[status] ?? status;
+}
+
+function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
@@ -188,7 +196,9 @@ export default function Home() {
                   <div className="thumb">▶</div>
                   <div>
                     <div className="project-title">{project.title}</div>
-                    <div className="project-meta">{project.original_filename} · {formatBytes(project.size_bytes)}</div>\n                    {jobs[project.id]?.transcript && <div className="transcript-preview">Transcrição ({jobs[project.id].language ?? "idioma detectado"}): {jobs[project.id].transcript}</div>}\n                    {jobs[project.id]?.error_message && <div className="project-meta">{jobs[project.id].error_message}</div>}
+                    <div className="project-meta">{project.original_filename} · {formatBytes(project.size_bytes)}</div>
+                    {jobs[project.id]?.transcript && <div className="transcript-preview">Transcrição ({jobs[project.id].language ?? "idioma detectado"}): {jobs[project.id].transcript}</div>}
+                    {jobs[project.id]?.error_message && <div className="project-meta">{jobs[project.id].error_message}</div>}
                   </div>
                 </div>
                 <span className="status">{statusLabel(project.status)}</span>
