@@ -25,7 +25,13 @@ function statusLabel(status: string) {
   return labels[status] ?? status;
 }
 
-function formatTime(seconds: number) {\n  const minutes = Math.floor(seconds / 60);\n  const remaining = Math.floor(seconds % 60);\n  return `${minutes}:${String(remaining).padStart(2, "0")}`;\n}\n\nfunction formatBytes(bytes: number) {
+function formatTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remaining = Math.floor(seconds % 60);
+  return `${minutes}:${String(remaining).padStart(2, "0")}`;
+}
+
+function formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
