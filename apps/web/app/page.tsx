@@ -43,6 +43,9 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [jobs, setJobs] = useState<Record<number, Job>>({});
+  const [clipDrafts, setClipDrafts] = useState<Record<string, { start: string; end: string }>>({});
+  const [savingClip, setSavingClip] = useState<string | null>(null);
+  const [editorMessage, setEditorMessage] = useState("");
   const [checking, setChecking] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
@@ -85,6 +88,35 @@ export default function Home() {
     const timer = window.setInterval(loadProjects, 5000);
     return () => { active = false; window.clearInterval(timer); };
   }, [user]);
+
+  async function saveClip(jobId: number, clipIndex: number, clip: ClipSuggestion) {
+    const key = `${jobId}-${clipIndex}`;
+    const draft = clipDrafts[key] ?? { start: String(clip.start), end: String(clip.end) };
+    const start = Number(draft.start);
+    const end = Number(draft.end);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start) {
+      setEditorMessage("Confira os tempos: o fim precisa ser maior que o início.");
+      return;
+    }
+    setSavingClip(key);
+    setEditorMessage("");
+    try {
+      const response = await fetch(`/api/jobs/${jobId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clip_index: clipIndex, start, end }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail ?? "Não foi possível salvar o corte.");
+      setJobs(current => Object.fromEntries(Object.entries(current).map(([projectId, job]) => [projectId, job])));
+      setClipDrafts(current => ({ ...current, [key]: { start: String(start), end: String(end) } }));
+      setEditorMessage("Tempos do corte salvos.");
+    } catch (err) {
+      setEditorMessage(err instanceof Error ? err.message : "Falha ao salvar o corte.");
+    } finally {
+      setSavingClip(null);
+    }
+  }
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -205,7 +237,7 @@ export default function Home() {
                     <div className="project-title">{project.title}</div>
                     <div className="project-meta">{project.original_filename} · {formatBytes(project.size_bytes)}</div>
                     {jobs[project.id]?.transcript && <div className="transcript-preview">Transcrição ({jobs[project.id].language ?? "idioma detectado"}): {jobs[project.id].transcript}</div>}
-                    {jobs[project.id]?.clip_suggestions?.length ? <div className="clip-suggestions"><strong>Sugestões de cortes</strong>{jobs[project.id].clip_suggestions.map((clip, index) => <div className="clip-suggestion" key={`${clip.start}-${index}`}><div className="clip-suggestion-top"><b>Corte {index + 1}</b><span>{formatTime(clip.start)}–{formatTime(clip.end)} · {Math.round(clip.score * 100)} pts</span></div><p>{clip.text}</p><small>{clip.reasons.join(" · ")}</small></div>)}</div> : null}
+                    {jobs[project.id]?.clip_suggestions?.length && project.processing_job_id ? <div className="clip-suggestions"><strong>Editor de cortes sugeridos</strong>{jobs[project.id].clip_suggestions.map((clip, index) => { const key = `${project.processing_job_id}-${index}`; const draft = clipDrafts[key] ?? { start: String(clip.start), end: String(clip.end) }; return <div className="clip-suggestion" key={`${clip.start}-${index}`}><div className="clip-suggestion-top"><b>Corte {index + 1}</b><span>{formatTime(clip.start)}–{formatTime(clip.end)} · {Math.round(clip.score * 100)} pts</span></div><div className="clip-timing-fields"><label>Início (seg.)<input type="number" min="0" step="0.1" value={draft.start} onChange={event => setClipDrafts(current => ({ ...current, [key]: { ...draft, start: event.target.value } }))} /></label><label>Fim (seg.)<input type="number" min="0" step="0.1" value={draft.end} onChange={event => setClipDrafts(current => ({ ...current, [key]: { ...draft, end: event.target.value } }))} /></label><button className="secondary clip-save" onClick={() => saveClip(project.processing_job_id!, index, clip)} disabled={savingClip === key}>{savingClip === key ? "Salvando..." : "Salvar tempos"}</button></div><p>{clip.text}</p><small>{clip.reasons.join(" · ")}</small></div>; })}{editorMessage && <div className="editor-message" role="status">{editorMessage}</div>}</div> : null}
                     {jobs[project.id]?.error_message && <div className="project-meta">{jobs[project.id].error_message}</div>}
                   </div>
                 </div>
