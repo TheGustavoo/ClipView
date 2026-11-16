@@ -34,7 +34,7 @@ Com Docker e Docker Compose instalados, na raiz do repositório execute:
 docker compose up --build
 ```
 
-Isso inicia PostgreSQL, Redis, API e um worker Celery com FFmpeg/FFprobe e faster-whisper. Na primeira execução, o worker baixa o modelo de reconhecimento de fala configurado (padrão: `small`), o que pode levar algum tempo e consumir alguns GB de espaço. A API ficará em `http://localhost:8000`. Os uploads ficam em um volume privado compartilhado entre API e worker. Para parar, use `Ctrl+C`; para encerrar os serviços, execute `docker compose down`. Não use as senhas padrão do Compose em ambientes públicos.
+Isso inicia PostgreSQL, Redis, API e um worker Celery com FFmpeg/FFprobe e faster-whisper. Na primeira execução, o worker baixa o modelo de reconhecimento de fala configurado (padrão: `small`), o que pode levar algum tempo e baixar centenas de MB na primeira execução; o cache fica preservado em volume Docker. A API ficará em `http://localhost:8000`. Os uploads ficam em um volume privado compartilhado entre API e worker. Para parar, use `Ctrl+C`; para encerrar os serviços, execute `docker compose down`. Não use as senhas padrão do Compose em ambientes públicos.
 
 ## Rodar localmente
 
