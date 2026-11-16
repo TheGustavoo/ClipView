@@ -2,7 +2,7 @@
 
 Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA.
 
-> **Status:** fundação inicial em desenvolvimento. A interface do painel e a API de saúde foram adicionadas. Autenticação, upload persistente, processamento com IA, renderização, cobrança e publicação ainda não estão implementados em produção.
+> **Status:** fundação em desenvolvimento. O painel inicial e uma API com cadastro, login, sessão JWT e consulta de perfil foram adicionados. Upload persistente, processamento com IA, renderização, cobrança e publicação ainda não estão implementados em produção.
 
 ## Visão do produto
 
@@ -19,10 +19,10 @@ Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA
 
 - **Frontend:** Next.js, React, TypeScript e Tailwind CSS
 - **API:** Python + FastAPI
-- **Persistência:** PostgreSQL
-- **Fila:** Redis + Celery
-- **Mídia:** FFmpeg e armazenamento compatível com S3
-- **Execução:** Docker Compose
+- **Persistência:** SQLAlchemy com SQLite local ou PostgreSQL configurado por `DATABASE_URL`
+- **Fila:** Redis + Celery (planejado)
+- **Mídia:** FFmpeg e armazenamento compatível com S3 (planejado)
+- **Execução:** Docker Compose (planejado)
 
 ## Rodar a interface web
 
@@ -48,9 +48,28 @@ pip install -r requirements-dev.txt
 uvicorn app.main:app --reload
 ```
 
-Verifique `http://localhost:8000/health`. Para executar o teste automatizado: `pytest` (na pasta `apps/api`).
+A API cria as tabelas iniciais automaticamente no startup para facilitar o desenvolvimento local. Para produção, substitua essa criação automática por migrações versionadas (Alembic), configure um `SECRET_KEY` forte e use PostgreSQL.
+
+### Endpoints iniciais
+
+- `GET /health` — estado da API.
+- `POST /auth/register` — cadastro; recebe `name`, `email` e `password` (mínimo 10 caracteres).
+- `POST /auth/login` — login; recebe `email` e `password`.
+- `GET /auth/me` — perfil autenticado; exige `Authorization: Bearer <access_token>`.
+
+Exemplo de cadastro:
+
+```bash
+curl -X POST http://localhost:8000/auth/register \\
+  -H 'Content-Type: application/json' \\
+  -d '{"name":"Seu Nome","email":"voce@example.com","password":"uma-senha-forte-123"}'
+```
+
+Para executar os testes automatizados, na pasta `apps/api`, rode `pytest`.
 
 ## Segurança e direitos de conteúdo
+
+As senhas são armazenadas com hash Argon2 e nunca retornadas pela API. Tokens de acesso são JWT e devem ser protegidos pelo cliente. O segredo padrão existe apenas para desenvolvimento local; defina `SECRET_KEY` forte e privado em qualquer ambiente compartilhado.
 
 A plataforma deverá processar apenas arquivos enviados pelo usuário ou fontes para as quais ele tenha autorização. Integrações com plataformas externas devem respeitar seus termos, APIs e controles de acesso. URLs fornecidas pelo usuário exigem validação contra SSRF, incluindo DNS, IPs privados, redirecionamentos e destinos finais.
 
