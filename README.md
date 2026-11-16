@@ -2,7 +2,7 @@
 
 Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA.
 
-> **Status:** fundação em desenvolvimento. O painel possui cadastro/login integrados e upload de arquivos de vídeo para armazenamento local no servidor, com projetos associados ao usuário. A fila assíncrona, inspeção técnica com FFprobe e transcrição inicial de áudio com Whisper foram adicionadas ao código. Análise de reações, seleção automática de cortes, editor, renderização final, cobrança e publicação ainda não estão implementados.
+> **Status:** fundação em desenvolvimento. O painel possui cadastro/login integrados e upload de arquivos de vídeo para armazenamento local no servidor, com projetos associados ao usuário. A fila assíncrona, inspeção técnica com FFprobe e transcrição inicial de áudio com Whisper foram adicionadas ao código. A primeira seleção automática de cortes baseada em sinais da transcrição está implementada. Análise visual de reações, detecção de cenas, editor, renderização final, cobrança e publicação ainda não estão implementados.
 
 ## Visão do produto
 
@@ -22,7 +22,7 @@ Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA
 - **Persistência:** SQLAlchemy com SQLite local ou PostgreSQL configurado por `DATABASE_URL`
 - **Armazenamento atual:** diretório local privado configurado por `UPLOAD_DIR`
 - **Fila:** Redis + Celery (primeira integração implementada)
-- **Worker de mídia:** FFmpeg/FFprobe e faster-whisper em serviço Docker separado
+- **Worker de mídia:** FFmpeg/FFprobe, faster-whisper e pontuação explicável de trechos em serviço Docker separado
 - **Mídia:** FFmpeg e armazenamento compatível com S3 (planejado)
 - **Execução:** Docker Compose com migração de banco antes de iniciar API e worker
 
@@ -75,7 +75,7 @@ Crie uma conta, entre e use a área “Comece um novo projeto” para enviar um 
 - `GET /auth/me` — perfil autenticado; exige `Authorization: Bearer <access_token>`.
 - `GET /projects` — lista somente os projetos do usuário autenticado.
 - `POST /projects/upload` — recebe multipart `file`, valida extensão, assinatura básica do contêiner e tamanho, grava o arquivo e cria um projeto e uma tarefa de processamento na fila.
-- `GET /jobs/{job_id}` — consulta o status da tarefa do próprio usuário e retorna metadados técnicos, idioma detectado e transcrição com marcações de tempo quando disponíveis.
+- `GET /jobs/{job_id}` — consulta o status da tarefa do próprio usuário e retorna metadados técnicos, idioma detectado, transcrição com marcações de tempo e sugestões de cortes pontuadas quando disponíveis.
 
 Para executar os testes automatizados, na pasta `apps/api`, rode `pytest`.
 
@@ -83,7 +83,7 @@ Para executar os testes automatizados, na pasta `apps/api`, rode `pytest`.
 
 As senhas são armazenadas com hash Argon2 e nunca retornadas pela API. Tokens de acesso são JWT. O frontend mantém o token em cookie `HttpOnly`, inacessível ao JavaScript do navegador.
 
-O upload atual usa armazenamento local no servidor, não armazenamento de objetos redundante. A validação da assinatura identifica alguns contêineres comuns, mas não substitui varredura antimalware. O worker executa FFprobe para extrair duração, formato, codecs e dimensões, extrai a faixa de áudio com FFmpeg e usa faster-whisper para produzir texto com marcações de tempo. A transcrição pode consumir bastante CPU e memória; não é ainda análise de reações, seleção inteligente de cortes nem geração de clipes. Configure também limites de corpo no proxy/reverse proxy e quotas por usuário antes de aceitar uploads públicos. Para produção, use armazenamento privado de objetos, URLs assinadas, isolamento de workers, migrações Alembic, PostgreSQL, HTTPS, rate limiting e monitoramento.
+O upload atual usa armazenamento local no servidor, não armazenamento de objetos redundante. A validação da assinatura identifica alguns contêineres comuns, mas não substitui varredura antimalware. O worker executa FFprobe para extrair duração, formato, codecs e dimensões, extrai a faixa de áudio com FFmpeg e usa faster-whisper para produzir texto com marcações de tempo. A primeira sugestão de cortes usa heurísticas transparentes sobre perguntas, termos de impacto, ênfase, duração e continuidade da fala. A pontuação é indicativa, não uma previsão de viralização. A transcrição pode consumir bastante CPU e memória; ainda não há análise visual de reações, detecção de cenas nem geração/exportação dos clipes. Configure também limites de corpo no proxy/reverse proxy e quotas por usuário antes de aceitar uploads públicos. Para produção, use armazenamento privado de objetos, URLs assinadas, isolamento de workers, migrações Alembic, PostgreSQL, HTTPS, rate limiting e monitoramento.
 
 O segredo padrão existe apenas para desenvolvimento local; defina `SECRET_KEY` forte e privado em qualquer ambiente compartilhado. Configure origens CORS específicas e revise a proteção CSRF das rotas autenticadas antes de expor o serviço.
 
@@ -97,7 +97,7 @@ Segredos e credenciais nunca devem ser versionados. Use os arquivos `.env.exampl
 2. API, banco de dados, autenticação e projetos
 3. Upload autenticado e armazenamento local inicial
 4. Pipeline assíncrono com Redis, Celery, FFprobe e transcrição Whisper
-5. Análise audiovisual e detecção de momentos
+5. Análise audiovisual, reações e detecção de cenas para melhorar as sugestões
 6. Editor de cortes e renderização
 7. Créditos, pagamentos e publicação social
 8. Testes, observabilidade, hardening e deploy
