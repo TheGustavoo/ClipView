@@ -47,6 +47,7 @@ class ProcessingJob(Base):
     metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     transcript_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     transcript_segments_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    clip_suggestions_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     language: Mapped[str | None] = mapped_column(String(16), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
