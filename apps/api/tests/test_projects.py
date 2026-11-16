@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.config import settings
 from app.db import Base, get_db
 from app.main import app
+from app.models import ProcessingJob
 
 test_engine = create_engine(
     "sqlite://",
@@ -56,6 +57,20 @@ def test_upload_and_list_projects(tmp_path, monkeypatch) -> None:
     job = client.get(f"/jobs/{project['processing_job_id']}", headers=headers)
     assert job.status_code == 200
     assert job.json()["status"] == "queued"
+
+    db = TestingSessionLocal()
+    processing_job = db.get(ProcessingJob, project["processing_job_id"])
+    processing_job.clip_suggestions_json = '[{"start": 1.0, "end": 8.0, "duration": 7.0, "score": 0.8, "text": "Trecho de teste", "reasons": ["Pergunta"]}]'
+    db.commit()
+    db.close()
+    edited = client.patch(
+        f"/jobs/{project['processing_job_id']}/clips/0",
+        headers=headers,
+        json={"start": 2.5, "end": 9.0},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["clip_suggestions"][0]["start"] == 2.5
+    assert edited.json()["clip_suggestions"][0]["end"] == 9.0
 
     listing = client.get("/projects", headers=headers)
     assert listing.status_code == 200
