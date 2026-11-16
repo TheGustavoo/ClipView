@@ -71,8 +71,10 @@ services:
       WHISPER_MODEL: ${WHISPER_MODEL:-small}
       WHISPER_DEVICE: cpu
       WHISPER_COMPUTE_TYPE: int8
+      HF_HOME: /home/clipview/.cache/huggingface
     volumes:
       - video_uploads:/app/var/uploads
+      - model_cache:/home/clipview/.cache/huggingface
     depends_on:
       db:
         condition: service_healthy
@@ -85,3 +87,4 @@ volumes:
   postgres_data:
   redis_data:
   video_uploads:
+  model_cache:
