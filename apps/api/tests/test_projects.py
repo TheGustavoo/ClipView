@@ -39,6 +39,7 @@ def create_user_token() -> str:
 
 def test_upload_and_list_projects(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    monkeypatch.setattr("app.routers.projects.inspect_video.delay", lambda job_id: None)
     token = create_user_token()
     headers = {"Authorization": f"Bearer {token}"}
     mp4_header = b"\x00\x00\x00\x18ftypisom" + b"sample-video-data"
@@ -50,7 +51,11 @@ def test_upload_and_list_projects(tmp_path, monkeypatch) -> None:
     assert upload.status_code == 201
     project = upload.json()
     assert project["original_filename"] == "amostra.mp4"
-    assert project["status"] == "uploaded"
+    assert project["status"] == "queued"
+    assert project["processing_job_id"] is not None
+    job = client.get(f"/jobs/{project['processing_job_id']}", headers=headers)
+    assert job.status_code == 200
+    assert job.json()["status"] == "queued"
 
     listing = client.get("/projects", headers=headers)
     assert listing.status_code == 200
