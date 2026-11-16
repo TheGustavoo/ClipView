@@ -42,6 +42,8 @@ export default function Home() {
   const videoRefs = useRef<Record<number, HTMLVideoElement | null>>({});
   const [previewEnds, setPreviewEnds] = useState<Record<number, number>>({});
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [importMode, setImportMode] = useState<"file" | "url">("file");
+  const [videoUrl, setVideoUrl] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [jobs, setJobs] = useState<Record<number, Job>>({});
@@ -153,6 +155,33 @@ export default function Home() {
     setMessage("");
   }
 
+  async function importVideoUrl() {
+    const trimmedUrl = videoUrl.trim();
+    if (!trimmedUrl) {
+      setError("Cole o link direto do arquivo de vídeo.");
+      return;
+    }
+    setUploading(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: trimmedUrl }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail ?? "Não foi possível importar o vídeo pelo link.");
+      setProjects(current => [data, ...current]);
+      setVideoUrl("");
+      setMessage("Vídeo importado! Ele foi adicionado aos seus projetos.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha ao importar o link.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function uploadVideo() {
     if (!selectedVideo) return;
     setUploading(true);
@@ -229,15 +258,26 @@ export default function Home() {
           <div className="section-head"><h2>Comece um novo projeto</h2><span>Etapa 1 de 3 · adicionar vídeo</span></div>
           <div className="upload">
             <div className="upload-icon">↑</div>
-            <h3>Envie um vídeo para seu estúdio</h3>
-            <p>MP4, MOV, WebM ou MKV · até 500 MB por arquivo.</p>
-            <input ref={fileRef} className="file-input" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
-              onChange={handleFile} />
-            <div className="upload-actions">
-              <button className="secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>Selecionar vídeo</button>
-              <button className="primary" onClick={uploadVideo} disabled={!selectedVideo || uploading}>{uploading ? "Enviando..." : "Enviar vídeo"}</button>
+            <h3>Adicione um vídeo ao seu estúdio</h3>
+            <p>Envie um arquivo ou importe por um link direto de vídeo · até 500 MB.</p>
+            <div className="import-tabs">
+              <button type="button" className={importMode === "file" ? "import-tab active" : "import-tab"} onClick={() => { setImportMode("file"); setError(""); }}>Enviar arquivo</button>
+              <button type="button" className={importMode === "url" ? "import-tab active" : "import-tab"} onClick={() => { setImportMode("url"); setError(""); }}>Colar link</button>
             </div>
-            {selectedVideo && <div className="file-name" role="status">{selectedVideo.name} · {formatBytes(selectedVideo.size)}</div>}
+            {importMode === "file" ? <>
+              <input ref={fileRef} className="file-input" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska" onChange={handleFile} />
+              <div className="upload-actions">
+                <button className="secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>Selecionar vídeo</button>
+                <button className="primary" onClick={uploadVideo} disabled={!selectedVideo || uploading}>{uploading ? "Enviando..." : "Enviar vídeo"}</button>
+              </div>
+              {selectedVideo && <div className="file-name" role="status">{selectedVideo.name} · {formatBytes(selectedVideo.size)}</div>}
+            </> : <>
+              <div className="url-import">
+                <input type="url" value={videoUrl} onChange={event => setVideoUrl(event.target.value)} placeholder="https://site.com/meu-video.mp4" aria-label="Link direto do vídeo" />
+                <button className="primary" onClick={importVideoUrl} disabled={!videoUrl.trim() || uploading}>{uploading ? "Importando..." : "Importar vídeo"}</button>
+              </div>
+              <div className="import-hint">Aceita links HTTPS diretos para arquivos MP4, MOV, WebM ou MKV. Links de páginas de redes sociais ainda não são aceitos.</div>
+            </>}
             {message && <div className="upload-success" role="status">{message}</div>}
             {error && <div className="auth-error" role="alert">{error}</div>}
           </div>
