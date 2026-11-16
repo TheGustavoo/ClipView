@@ -136,3 +136,5 @@ h1 { font-size: clamp(26px,3vw,35px); letter-spacing: -1.2px; margin: 9px 0 8px;
   .profile-actions { gap: 7px; }
   .logout-button { padding: 8px 9px; }
 }
+
+.transcript-preview { color: #b8b1d0; font-size: 11px; line-height: 1.6; margin-top: 8px; max-width: 720px; white-space: pre-wrap; overflow-wrap: anywhere; }
