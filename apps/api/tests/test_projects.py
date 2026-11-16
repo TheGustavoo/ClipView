@@ -54,6 +54,17 @@ def test_upload_and_list_projects(tmp_path, monkeypatch) -> None:
     assert project["original_filename"] == "amostra.mp4"
     assert project["status"] == "queued"
     assert project["processing_job_id"] is not None
+
+    video = client.get(f"/projects/{project['id']}/video", headers=headers)
+    assert video.status_code == 200
+    assert video.content == mp4_header
+    ranged_video = client.get(
+        f"/projects/{project['id']}/video",
+        headers={**headers, "Range": "bytes=0-5"},
+    )
+    assert ranged_video.status_code == 206
+    assert ranged_video.content == mp4_header[:6]
+    assert ranged_video.headers["content-range"] == f"bytes 0-5/{len(mp4_header)}"
     job = client.get(f"/jobs/{project['processing_job_id']}", headers=headers)
     assert job.status_code == 200
     assert job.json()["status"] == "queued"
@@ -100,3 +111,8 @@ def test_upload_rejects_invalid_container_signature() -> None:
         files={"file": ("renamed.mp4", b"this is not a video", "video/mp4")},
     )
     assert response.status_code == 415
+
+
+def test_video_playback_requires_authentication() -> None:
+    response = client.get("/projects/1/video")
+    assert response.status_code == 401
