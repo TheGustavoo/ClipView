@@ -21,6 +21,7 @@ class JobPublic(BaseModel):
     metadata: dict | None
     transcript: str | None
     transcript_segments: list[dict] | None
+    clip_suggestions: list[dict] | None
     language: str | None
     created_at: datetime
 
@@ -41,6 +42,7 @@ def get_job(
 
     metadata = json.loads(job.metadata_json) if job.metadata_json else None
     segments = json.loads(job.transcript_segments_json) if job.transcript_segments_json else None
+    suggestions = json.loads(job.clip_suggestions_json) if job.clip_suggestions_json else None
     return JobPublic(
         id=job.id,
         project_id=job.project_id,
@@ -49,6 +51,7 @@ def get_job(
         metadata=metadata,
         transcript=job.transcript_text,
         transcript_segments=segments,
+        clip_suggestions=suggestions,
         language=job.language,
         created_at=job.created_at,
     )
