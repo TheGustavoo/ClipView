@@ -24,6 +24,16 @@ services:
       timeout: 3s
       retries: 10
 
+  migrate:
+    build:
+      context: ./apps/api
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://clipview:${POSTGRES_PASSWORD:-change-this-local-password}@db:5432/clipview
+    depends_on:
+      db:
+        condition: service_healthy
+
   api:
     build:
       context: ./apps/api
@@ -45,6 +55,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   worker:
     build:
@@ -66,6 +78,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   postgres_data:
