@@ -26,35 +26,36 @@ Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA
 - **Mídia:** FFmpeg e armazenamento compatível com S3 (planejado)
 - **Execução:** Docker Compose com migração de banco antes de iniciar API e worker
 
-## Subir API e worker com Docker Compose
+## Preparar o ambiente para testar
 
-Com Docker e Docker Compose instalados, na raiz do repositório execute:
+A forma mais simples de testar o processamento de vídeos é executar API, banco de dados, Redis e worker pelo Docker Compose, e abrir o frontend localmente. Assim, o Redis e o worker também ficam ativos quando você enviar um vídeo.
 
-```bash
-docker compose up --build
-```
+### 1. Inicie os serviços de backend
 
-Isso inicia PostgreSQL, Redis, API e um worker Celery com FFmpeg/FFprobe e faster-whisper. Na primeira execução, o worker baixa o modelo de reconhecimento de fala configurado (padrão: `small`), o que pode levar algum tempo e baixar centenas de MB na primeira execução; o cache fica preservado em volume Docker. A API ficará em `http://localhost:8000`. Os uploads ficam em um volume privado compartilhado entre API e worker. Para parar, use `Ctrl+C`; para encerrar os serviços, execute `docker compose down`. Não use as senhas padrão do Compose em ambientes públicos.
+Requisitos: Docker Desktop (ou Docker Engine) com Docker Compose.
 
-## Rodar localmente
-
-Requisitos: Node.js 20 ou superior, npm e Python 3.12 ou superior.
-
-### 1. Inicie a API
+Na raiz do repositório, execute:
 
 ```bash
-cd apps/api
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
-cp .env.example .env       # Windows: copie o arquivo manualmente
-pip install -r requirements-dev.txt
-alembic upgrade head
-uvicorn app.main:app --reload
+docker compose up --build -d
 ```
 
-A API ficará em `http://localhost:8000`. As tabelas iniciais são criadas no startup para facilitar o desenvolvimento; `alembic upgrade head` aplica alterações de esquema em bancos já existentes. Os arquivos são gravados em `apps/api/var/uploads` por padrão; esse diretório não deve ser exposto publicamente.
+Isso inicia PostgreSQL, Redis, API e worker Celery com FFmpeg/FFprobe e faster-whisper. A API ficará em `http://localhost:8000`. Confira se está respondendo:
 
-### 2. Inicie o frontend em outro terminal
+```bash
+curl http://localhost:8000/health
+docker compose ps
+```
+
+Na primeira execução, o worker baixa o modelo Whisper configurado (padrão: `small`), o que pode levar algum tempo e baixar centenas de MB. O cache fica preservado em volume Docker. Para acompanhar o processamento e eventuais erros:
+
+```bash
+docker compose logs -f api worker
+```
+
+### 2. Inicie o frontend
+
+Abra outro terminal, na raiz do repositório, e execute:
 
 ```bash
 cd apps/web
@@ -63,9 +64,31 @@ npm install
 npm run dev
 ```
 
-Abra `http://localhost:3000`. O `API_URL` do `.env.local` deve apontar para a API (`http://localhost:8000` por padrão). O frontend disponibiliza `/register` e `/login`; as rotas proxy guardam o token em cookie `HttpOnly`, `SameSite=Lax` e `Secure` em produção.
+Abra `http://localhost:3000`, crie uma conta em `/register` e entre. Na área “Comece um novo projeto”, envie um vídeo MP4, MOV, WebM ou MKV de até 500 MB. Aguarde o worker concluir a transcrição; na primeira execução, o download do modelo pode demorar. Depois, confira as sugestões, ajuste os tempos e use “Pré-visualizar corte”.
 
-Crie uma conta, entre e use a área “Comece um novo projeto” para enviar um vídeo. Formatos aceitos: MP4, MOV, WebM e MKV. Limite padrão: 500 MB por arquivo.
+### 3. Parar os serviços
+
+No terminal da raiz do projeto:
+
+```bash
+docker compose down
+```
+
+Esse comando mantém os volumes, incluindo banco de dados, vídeos enviados e cache do modelo. **Não use `docker compose down -v` se quiser preservar esses dados.** As credenciais padrão do Compose são apenas para desenvolvimento local; não exponha essa configuração publicamente.
+
+### 4. Executar os testes automatizados da API (opcional)
+
+Com Python 3.12 ou superior, em outro terminal:
+
+```bash
+cd apps/api
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+pip install -r requirements-dev.txt
+pytest -q
+```
+
+Os testes automatizados usam banco SQLite temporário. Eles não substituem o teste manual de upload, transcrição e reprodução descrito acima.
 
 ## Endpoints iniciais da API
 
@@ -78,7 +101,6 @@ Crie uma conta, entre e use a área “Comece um novo projeto” para enviar um 
 - `POST /projects/upload` — recebe multipart `file`, valida extensão, assinatura básica do contêiner e tamanho, grava o arquivo e cria um projeto e uma tarefa de processamento na fila.
 - `GET /jobs/{job_id}` — consulta o status da tarefa do próprio usuário e retorna metadados técnicos, idioma detectado, transcrição com marcações de tempo e sugestões de cortes pontuadas quando disponíveis. `PATCH /jobs/{job_id}/clips/{clip_index}` atualiza os tempos de início e fim de uma sugestão do próprio usuário.
 
-Para executar os testes automatizados, na pasta `apps/api`, rode `pytest`.
 
 ## Segurança, limitações e direitos de conteúdo
 
