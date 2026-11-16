@@ -11,7 +11,7 @@ export async function GET(
   if (!token) return NextResponse.json({ detail: "Não autenticado." }, { status: 401 });
 
   const projectId = context.params.projectId;
-  if (!/^\\d+$/.test(projectId)) {
+  if (!/^\d+$/.test(projectId)) {
     return NextResponse.json({ detail: "Projeto inválido." }, { status: 400 });
   }
 
