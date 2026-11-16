@@ -23,6 +23,8 @@ def upgrade() -> None:
         op.add_column("processing_jobs", sa.Column("transcript_segments_json", sa.Text(), nullable=True))
     if "language" not in existing:
         op.add_column("processing_jobs", sa.Column("language", sa.String(length=16), nullable=True))
+    if "clip_suggestions_json" not in existing:
+        op.add_column("processing_jobs", sa.Column("clip_suggestions_json", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
@@ -32,6 +34,6 @@ def downgrade() -> None:
         return
 
     existing = {column["name"] for column in inspector.get_columns("processing_jobs")}
-    for column in ("language", "transcript_segments_json", "transcript_text"):
+    for column in ("clip_suggestions_json", "language", "transcript_segments_json", "transcript_text"):
         if column in existing:
             op.drop_column("processing_jobs", column)
