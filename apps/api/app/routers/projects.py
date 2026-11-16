@@ -2,12 +2,13 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.storage import ALLOWED_CONTENT_TYPES, has_video_signature, new_upload_path
+from app.core.storage import ALLOWED_CONTENT_TYPES, has_video_signature, new_upload_path, upload_root
 from app.db import get_db
 from app.dependencies import get_current_user
 from app.models import ProcessingJob, Project, User
@@ -54,6 +55,32 @@ def list_projects(
             processing_job_id=job.id if job else None,
         ))
     return results
+
+
+@router.get("/{project_id}/video")
+def stream_project_video(
+    project_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    project = db.scalar(
+        select(Project).where(Project.id == project_id, Project.user_id == user.id)
+    )
+    if project is None:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado.")
+
+    root = upload_root().resolve()
+    video_path = Path(project.storage_path).resolve()
+    if video_path.parent != root or not video_path.is_file():
+        raise HTTPException(status_code=404, detail="Arquivo de vídeo não encontrado.")
+
+    return FileResponse(
+        path=video_path,
+        media_type=project.content_type,
+        filename=project.original_filename,
+        content_disposition_type="inline",
+        headers={"Cache-Control": "private, no-store"},
+    )
 
 
 @router.post("/upload", response_model=ProjectPublic, status_code=status.HTTP_201_CREATED)
