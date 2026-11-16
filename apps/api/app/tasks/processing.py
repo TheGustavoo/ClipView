@@ -10,6 +10,7 @@ from app.core.celery_app import celery_app
 from app.core.config import settings
 from app.db import SessionLocal
 from app.models import ProcessingJob, Project
+from app.services.clip_suggestions import suggest_clips
 
 
 @lru_cache(maxsize=2)
@@ -118,6 +119,9 @@ def inspect_video(self, job_id: int) -> dict:
                 job.transcript_text = " ".join(transcript_parts)
                 job.transcript_segments_json = json.dumps(
                     transcript_segments, ensure_ascii=False
+                )
+                job.clip_suggestions_json = json.dumps(
+                    suggest_clips(transcript_segments), ensure_ascii=False
                 )
                 job.language = info.language
             finally:
