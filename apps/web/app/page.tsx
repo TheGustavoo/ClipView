@@ -1,16 +1,34 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type User = { id: number; name: string; email: string };
+type Project = {
+  id: number;
+  title: string;
+  original_filename: string;
+  size_bytes: number;
+  content_type: string;
+  status: string;
+  created_at: string;
+};
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export default function Home() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState("");
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [checking, setChecking] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -25,14 +43,50 @@ export default function Home() {
     return () => { active = false; };
   }, [router]);
 
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/projects", { cache: "no-store" })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail ?? "Não foi possível carregar projetos.");
+        setProjects(data);
+      })
+      .catch(err => setError(err instanceof Error ? err.message : "Erro ao carregar projetos."));
+  }, [user]);
+
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.replace("/login");
     router.refresh();
   }
 
-  function handleFile(file?: File) {
-    if (file) setSelectedFile(file.name);
+  function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedVideo(file);
+    setError("");
+    setMessage("");
+  }
+
+  async function uploadVideo() {
+    if (!selectedVideo) return;
+    setUploading(true);
+    setError("");
+    setMessage("");
+    try {
+      const body = new FormData();
+      body.append("file", selectedVideo);
+      const response = await fetch("/api/projects", { method: "POST", body });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail ?? "Não foi possível enviar o vídeo.");
+      setProjects(current => [data, ...current]);
+      setSelectedVideo(null);
+      if (fileRef.current) fileRef.current.value = "";
+      setMessage("Vídeo enviado e projeto criado. O processamento automático ainda será conectado.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Falha no upload.");
+    } finally {
+      setUploading(false);
+    }
   }
 
   if (checking || !user) {
@@ -80,8 +134,8 @@ export default function Home() {
         </header>
 
         <section className="stats" id="usage" aria-label="Resumo da conta">
-          <div className="stat"><span>Projetos criados</span><strong>0</strong><small>Seus projetos aparecerão aqui</small></div>
-          <div className="stat"><span>Vídeos processados</span><strong>0</strong><small>Pronto para começar</small></div>
+          <div className="stat"><span>Projetos criados</span><strong>{projects.length}</strong><small>Projetos da sua conta</small></div>
+          <div className="stat"><span>Vídeos processados</span><strong>{projects.filter(project => project.status === "completed").length}</strong><small>O processamento será adicionado em breve</small></div>
           <div className="stat"><span>Créditos disponíveis</span><strong>—</strong><small>Planos e créditos serão conectados em breve</small></div>
         </section>
 
@@ -89,26 +143,44 @@ export default function Home() {
           <div className="section-head"><h2>Comece um novo projeto</h2><span>Etapa 1 de 3 · adicionar vídeo</span></div>
           <div className="upload">
             <div className="upload-icon">↑</div>
-            <h3>Escolha um vídeo para começar</h3>
-            <p>Selecione um arquivo do seu dispositivo. O upload real será habilitado na próxima etapa.</p>
-            <input ref={fileRef} className="file-input" type="file" accept="video/*"
-              onChange={event => handleFile(event.target.files?.[0])} />
-            <button className="primary" onClick={() => fileRef.current?.click()}>Selecionar vídeo</button>
-            {selectedFile && <div className="file-name" role="status">Arquivo selecionado: {selectedFile}</div>}
+            <h3>Envie um vídeo para seu estúdio</h3>
+            <p>MP4, MOV, WebM ou MKV · até 500 MB por arquivo.</p>
+            <input ref={fileRef} className="file-input" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska"
+              onChange={handleFile} />
+            <div className="upload-actions">
+              <button className="secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>Selecionar vídeo</button>
+              <button className="primary" onClick={uploadVideo} disabled={!selectedVideo || uploading}>{uploading ? "Enviando..." : "Enviar vídeo"}</button>
+            </div>
+            {selectedVideo && <div className="file-name" role="status">{selectedVideo.name} · {formatBytes(selectedVideo.size)}</div>}
+            {message && <div className="upload-success" role="status">{message}</div>}
+            {error && <div className="auth-error" role="alert">{error}</div>}
           </div>
         </section>
 
         <section id="projects">
-          <div className="section-head"><h2>Projetos recentes</h2><span>Seus trabalhos aparecerão aqui</span></div>
+          <div className="section-head"><h2>Projetos recentes</h2><span>{projects.length} projeto(s)</span></div>
           <div className="projects">
-            <div className="project">
-              <div className="project-info"><div className="thumb">▶</div><div><div className="project-title">Nenhum projeto ainda</div><div className="project-meta">Adicione seu primeiro vídeo para começar.</div></div></div>
-              <span className="status">Aguardando vídeo</span>
-            </div>
+            {projects.length === 0 ? (
+              <div className="project">
+                <div className="project-info"><div className="thumb">▶</div><div><div className="project-title">Nenhum projeto ainda</div><div className="project-meta">Envie seu primeiro vídeo para começar.</div></div></div>
+                <span className="status">Aguardando vídeo</span>
+              </div>
+            ) : projects.map(project => (
+              <div className="project" key={project.id}>
+                <div className="project-info">
+                  <div className="thumb">▶</div>
+                  <div>
+                    <div className="project-title">{project.title}</div>
+                    <div className="project-meta">{project.original_filename} · {formatBytes(project.size_bytes)}</div>
+                  </div>
+                </div>
+                <span className="status">{project.status === "uploaded" ? "Enviado" : project.status}</span>
+              </div>
+            ))}
           </div>
         </section>
 
-        <p className="footer-note" id="settings">Sua sessão é protegida por cookie HttpOnly. O seletor de vídeo ainda não envia arquivos: armazenamento, processamento de vídeo, IA e créditos estão em desenvolvimento.</p>
+        <p className="footer-note" id="settings">Os vídeos enviados são armazenados no servidor e associados à sua conta. A análise com IA, geração de cortes, renderização e créditos ainda estão em desenvolvimento.</p>
       </main>
     </div>
   );
