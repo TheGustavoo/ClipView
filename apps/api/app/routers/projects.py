@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.storage import ALLOWED_CONTENT_TYPES, new_upload_path
+from app.core.storage import ALLOWED_CONTENT_TYPES, has_video_signature, new_upload_path
 from app.db import get_db
 from app.dependencies import get_current_user
 from app.models import Project, User
@@ -54,15 +54,23 @@ async def upload_project(
 
     total = 0
     try:
+        first_chunk = await file.read(1024 * 1024)
+        if not first_chunk:
+            raise HTTPException(status_code=400, detail="O arquivo está vazio.")
+        if not has_video_signature(original_name, first_chunk):
+            raise HTTPException(status_code=415, detail="O arquivo não parece ser um vídeo MP4, MOV, WebM ou MKV.")
+
         with destination.open("wb") as output:
+            total = len(first_chunk)
+            if total > settings.max_upload_bytes:
+                raise HTTPException(status_code=413, detail="O vídeo excede o limite de tamanho.")
+            output.write(first_chunk)
+
             while chunk := await file.read(1024 * 1024):
                 total += len(chunk)
                 if total > settings.max_upload_bytes:
                     raise HTTPException(status_code=413, detail="O vídeo excede o limite de tamanho.")
                 output.write(chunk)
-
-        if total == 0:
-            raise HTTPException(status_code=400, detail="O arquivo está vazio.")
 
         project = Project(
             user_id=user.id,
