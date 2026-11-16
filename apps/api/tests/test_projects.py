@@ -1,0 +1,72 @@
+from collections.abc import Generator
+from uuid import uuid4
+
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from app.core.config import settings
+from app.db import Base, get_db
+from app.main import app
+
+test_engine = create_engine(
+    "sqlite://",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+TestingSessionLocal = sessionmaker(bind=test_engine, autoflush=False, autocommit=False)
+
+def override_get_db() -> Generator:
+    Base.metadata.create_all(bind=test_engine)
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+app.dependency_overrides[get_db] = override_get_db
+client = TestClient(app)
+
+def create_user_token() -> str:
+    email = f"{uuid4().hex}@example.com"
+    response = client.post(
+        "/auth/register",
+        json={"name": "Teste Upload", "email": email, "password": "senha-de-teste-123"},
+    )
+    assert response.status_code == 201
+    return response.json()["access_token"]
+
+def test_upload_and_list_projects(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(settings, "upload_dir", str(tmp_path))
+    token = create_user_token()
+    headers = {"Authorization": f"Bearer {token}"}
+    upload = client.post(
+        "/projects/upload",
+        headers=headers,
+        files={"file": ("amostra.mp4", b"fake-video-content", "video/mp4")},
+    )
+    assert upload.status_code == 201
+    project = upload.json()
+    assert project["original_filename"] == "amostra.mp4"
+    assert project["status"] == "uploaded"
+
+    listing = client.get("/projects", headers=headers)
+    assert listing.status_code == 200
+    assert len(listing.json()) == 1
+
+def test_upload_requires_authentication() -> None:
+    response = client.post(
+        "/projects/upload",
+        files={"file": ("amostra.mp4", b"video", "video/mp4")},
+    )
+    assert response.status_code == 401
+
+def test_upload_rejects_unsupported_extension() -> None:
+    token = create_user_token()
+    response = client.post(
+        "/projects/upload",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": ("script.exe", b"not-video", "application/octet-stream")},
+    )
+    assert response.status_code == 415
