@@ -2,7 +2,7 @@
 
 Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA.
 
-> **Status:** fundação inicial em desenvolvimento. Os módulos de ingestão, análise multimodal, seleção automática, renderização, cobrança e publicação ainda não estão implementados em produção.
+> **Status:** fundação inicial em desenvolvimento. A interface do painel e a API de saúde foram adicionadas. Autenticação, upload persistente, processamento com IA, renderização, cobrança e publicação ainda não estão implementados em produção.
 
 ## Visão do produto
 
@@ -24,15 +24,37 @@ Plataforma SaaS para transformar vídeos longos em clipes curtos com apoio de IA
 - **Mídia:** FFmpeg e armazenamento compatível com S3
 - **Execução:** Docker Compose
 
+## Rodar a interface web
+
+Requisitos: Node.js 20 ou superior e npm.
+
+```bash
+cd apps/web
+npm install
+npm run dev
+```
+
+Abra `http://localhost:3000`. O painel atual é uma interface inicial: o seletor de arquivo apenas mostra o nome localmente e ainda não envia o vídeo para um servidor.
+
+## Rodar a API
+
+Requisitos: Python 3.12 ou superior.
+
+```bash
+cd apps/api
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+pip install -r requirements-dev.txt
+uvicorn app.main:app --reload
+```
+
+Verifique `http://localhost:8000/health`. Para executar o teste automatizado: `pytest` (na pasta `apps/api`).
+
 ## Segurança e direitos de conteúdo
 
 A plataforma deverá processar apenas arquivos enviados pelo usuário ou fontes para as quais ele tenha autorização. Integrações com plataformas externas devem respeitar seus termos, APIs e controles de acesso. URLs fornecidas pelo usuário exigem validação contra SSRF, incluindo DNS, IPs privados, redirecionamentos e destinos finais.
 
 Segredos e credenciais nunca devem ser versionados. Use `.env.example` como referência e mantenha `.env` local.
-
-## Desenvolvimento
-
-A configuração executável será documentada à medida que os serviços forem adicionados e testados. Não considere este repositório pronto para produção.
 
 ## Roadmap inicial
 
