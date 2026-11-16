@@ -12,9 +12,10 @@ type Project = {
   content_type: string;
   status: string;
   created_at: string;
+  processing_job_id?: number | null;
 };
 
-function formatBytes(bytes: number) {
+function statusLabel(status: string) {\n  const labels: Record<string, string> = {\n    uploaded: "Enviado", queued: "Na fila", processing: "Analisando vídeo", ready: "Pronto",\n    queue_unavailable: "Fila indisponível", processing_failed: "Falha no processamento",\n  };\n  return labels[status] ?? status;\n}\n\nfunction formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
@@ -45,13 +46,20 @@ export default function Home() {
 
   useEffect(() => {
     if (!user) return;
-    fetch("/api/projects", { cache: "no-store" })
-      .then(async response => {
+    let active = true;
+    const loadProjects = async () => {
+      try {
+        const response = await fetch("/api/projects", { cache: "no-store" });
         const data = await response.json();
         if (!response.ok) throw new Error(data.detail ?? "Não foi possível carregar projetos.");
-        setProjects(data);
-      })
-      .catch(err => setError(err instanceof Error ? err.message : "Erro ao carregar projetos."));
+        if (active) setProjects(data);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Erro ao carregar projetos.");
+      }
+    };
+    void loadProjects();
+    const timer = window.setInterval(loadProjects, 5000);
+    return () => { active = false; window.clearInterval(timer); };
   }, [user]);
 
   async function logout() {
@@ -81,7 +89,7 @@ export default function Home() {
       setProjects(current => [data, ...current]);
       setSelectedVideo(null);
       if (fileRef.current) fileRef.current.value = "";
-      setMessage("Vídeo enviado e projeto criado. O processamento automático ainda será conectado.");
+      setMessage("Vídeo enviado! Ele entrou na fila de análise automática.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha no upload.");
     } finally {
@@ -135,7 +143,7 @@ export default function Home() {
 
         <section className="stats" id="usage" aria-label="Resumo da conta">
           <div className="stat"><span>Projetos criados</span><strong>{projects.length}</strong><small>Projetos da sua conta</small></div>
-          <div className="stat"><span>Vídeos processados</span><strong>{projects.filter(project => project.status === "completed").length}</strong><small>O processamento será adicionado em breve</small></div>
+          <div className="stat"><span>Vídeos processados</span><strong>{projects.filter(project => project.status === "ready").length}</strong><small>Vídeos com análise técnica concluída</small></div>
           <div className="stat"><span>Créditos disponíveis</span><strong>—</strong><small>Planos e créditos serão conectados em breve</small></div>
         </section>
 
@@ -174,13 +182,13 @@ export default function Home() {
                     <div className="project-meta">{project.original_filename} · {formatBytes(project.size_bytes)}</div>
                   </div>
                 </div>
-                <span className="status">{project.status === "uploaded" ? "Enviado" : project.status}</span>
+                <span className="status">{statusLabel(project.status)}</span>
               </div>
             ))}
           </div>
         </section>
 
-        <p className="footer-note" id="settings">Os vídeos enviados são armazenados no servidor e associados à sua conta. A análise com IA, geração de cortes, renderização e créditos ainda estão em desenvolvimento.</p>
+        <p className="footer-note" id="settings">Os vídeos enviados são armazenados no servidor e associados à sua conta. A análise de conteúdo com IA, geração de cortes, renderização e créditos ainda estão em desenvolvimento.</p>
       </main>
     </div>
   );
