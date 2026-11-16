@@ -14,8 +14,9 @@ type Project = {
   created_at: string;
   processing_job_id?: number | null;
 };
+type Job = { status: string; transcript: string | null; language: string | null; error_message: string | null };
 
-function statusLabel(status: string) {\n  const labels: Record<string, string> = {\n    uploaded: "Enviado", queued: "Na fila", processing: "Analisando vídeo", ready: "Pronto",\n    queue_unavailable: "Fila indisponível", processing_failed: "Falha no processamento",\n  };\n  return labels[status] ?? status;\n}\n\nfunction formatBytes(bytes: number) {
+function statusLabel(status: string) {\n  const labels: Record<string, string> = {\n    uploaded: "Enviado", queued: "Na fila", processing: "Analisando vídeo", ready: "Pronto", completed: "Transcrição concluída", transcribing: "Transcrevendo áudio", extracting_audio: "Extraindo áudio",\n    queue_unavailable: "Fila indisponível", processing_failed: "Falha no processamento",\n  };\n  return labels[status] ?? status;\n}\n\nfunction formatBytes(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
@@ -26,6 +27,7 @@ export default function Home() {
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [jobs, setJobs] = useState<Record<number, Job>>({});
   const [checking, setChecking] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
@@ -50,9 +52,16 @@ export default function Home() {
     const loadProjects = async () => {
       try {
         const response = await fetch("/api/projects", { cache: "no-store" });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail ?? "Não foi possível carregar projetos.");
-        if (active) setProjects(data);
+        const data: Project[] = await response.json();
+        if (!response.ok) throw new Error("Não foi possível carregar projetos.");
+        if (!active) return;
+        setProjects(data);
+        const jobEntries = await Promise.all(data.filter(project => project.processing_job_id).map(async project => {
+          const jobResponse = await fetch(`/api/jobs/${project.processing_job_id}`, { cache: "no-store" });
+          if (!jobResponse.ok) return null;
+          return [project.id, await jobResponse.json()] as const;
+        }));
+        if (active) setJobs(Object.fromEntries(jobEntries.filter((entry): entry is NonNullable<typeof entry> => entry !== null)));
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Erro ao carregar projetos.");
       }
@@ -143,7 +152,7 @@ export default function Home() {
 
         <section className="stats" id="usage" aria-label="Resumo da conta">
           <div className="stat"><span>Projetos criados</span><strong>{projects.length}</strong><small>Projetos da sua conta</small></div>
-          <div className="stat"><span>Vídeos processados</span><strong>{projects.filter(project => project.status === "ready").length}</strong><small>Vídeos com análise técnica concluída</small></div>
+          <div className="stat"><span>Vídeos processados</span><strong>{projects.filter(project => project.status === "ready").length}</strong><small>Vídeos com transcrição concluída</small></div>
           <div className="stat"><span>Créditos disponíveis</span><strong>—</strong><small>Planos e créditos serão conectados em breve</small></div>
         </section>
 
@@ -179,7 +188,7 @@ export default function Home() {
                   <div className="thumb">▶</div>
                   <div>
                     <div className="project-title">{project.title}</div>
-                    <div className="project-meta">{project.original_filename} · {formatBytes(project.size_bytes)}</div>
+                    <div className="project-meta">{project.original_filename} · {formatBytes(project.size_bytes)}</div>\n                    {jobs[project.id]?.transcript && <div className="transcript-preview">Transcrição ({jobs[project.id].language ?? "idioma detectado"}): {jobs[project.id].transcript}</div>}\n                    {jobs[project.id]?.error_message && <div className="project-meta">{jobs[project.id].error_message}</div>}
                   </div>
                 </div>
                 <span className="status">{statusLabel(project.status)}</span>
@@ -188,7 +197,7 @@ export default function Home() {
           </div>
         </section>
 
-        <p className="footer-note" id="settings">Os vídeos enviados são armazenados no servidor e associados à sua conta. A análise de conteúdo com IA, geração de cortes, renderização e créditos ainda estão em desenvolvimento.</p>
+        <p className="footer-note" id="settings">Os vídeos enviados são armazenados no servidor e associados à sua conta. A identificação de momentos relevantes por IA, geração de cortes, renderização e créditos ainda estão em desenvolvimento.</p>
       </main>
     </div>
   );
