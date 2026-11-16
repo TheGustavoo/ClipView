@@ -19,6 +19,9 @@ class JobPublic(BaseModel):
     status: str
     error_message: str | None
     metadata: dict | None
+    transcript: str | None
+    transcript_segments: list[dict] | None
+    language: str | None
     created_at: datetime
 
 
@@ -37,11 +40,15 @@ def get_job(
         raise HTTPException(status_code=404, detail="Tarefa não encontrada.")
 
     metadata = json.loads(job.metadata_json) if job.metadata_json else None
+    segments = json.loads(job.transcript_segments_json) if job.transcript_segments_json else None
     return JobPublic(
         id=job.id,
         project_id=job.project_id,
         status=job.status,
         error_message=job.error_message,
         metadata=metadata,
+        transcript=job.transcript_text,
+        transcript_segments=segments,
+        language=job.language,
         created_at=job.created_at,
     )
