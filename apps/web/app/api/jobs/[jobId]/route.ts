@@ -36,7 +36,7 @@ export async function PATCH(
   if (!token) return NextResponse.json({ detail: "Não autenticado." }, { status: 401 });
 
   const jobId = context.params.jobId;
-  if (!/^\\d+$/.test(jobId)) {
+  if (!/^\d+$/.test(jobId)) {
     return NextResponse.json({ detail: "Tarefa inválida." }, { status: 400 });
   }
 
