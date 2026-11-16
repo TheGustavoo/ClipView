@@ -25,6 +25,8 @@ Thumbs.db
 # Media and generated data
 media/
 uploads/
+apps/api/var/uploads/
+apps/api/clipview.db
 *.mp4
 *.mov
 *.mkv
